@@ -3,7 +3,7 @@ import { cache } from "react";
 import db from "@/db/drizzle";
 import { auth } from "@clerk/nextjs";
 import { eq } from "drizzle-orm";
-import { courses, units, userProgress } from "@/db/schema";
+import { challengeProgress, courses, units, userProgress } from "@/db/schema";
 
 export const getUserProgress = cache(async () => {
     const { userId } = await auth();
@@ -13,10 +13,10 @@ export const getUserProgress = cache(async () => {
     }
 
     return db.query.userProgress.findFirst({
-       where: eq(userProgress.userId, userId),
-       with: {
-           activeCourse: true,
-       },
+        where: eq(userProgress.userId, userId),
+        with: {
+            activeCourse: true,
+        },
     });
 });
 
@@ -29,26 +29,35 @@ export const getCourseById = cache(async (courseId: number) => {
 });
 
 export const getUnits = cache(async () => {
-   const userProgress = await getUserProgress();
+    const { userId } = auth();
+    const userProgress = await getUserProgress();
 
-   if (!userProgress?.activeCourseId) {
-       return [];
-   }
+    if (!userProgress?.activeCourseId) {
+        return [];
+    }
 
-   const data = await db.query.units.findMany({
-      where: eq(units.courseId, userProgress.activeCourseId),
-       with: {
-          lessons: {
-              with: {
-                  challenges: {
-                      with: {
-                          challengeProgress: true,
-                      },
-                  },
-              },
-          },
-       },
-   });
+    const data = await db.query.units.findMany({
+        orderBy: (units, { asc }) => [asc(units.order)],
+        where: eq(units.courseId, userProgress.activeCourseId),
+        with: {
+            lessons: {
+                orderBy: (lessons, { asc }) => [asc(lessons.order)],
+                with: {
+                    challenges: {
+                        orderBy: (challenges, { asc }) => [asc(challenges.order)],
+                        with: {
+                            challengeProgress: {
+                                where: eq(
+                                    challengeProgress.userId,
+                                    userId,
+                                ),
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
 
     return data.map((unit) => {
         const lessonsWithCompletedStatus = unit.lessons.map((lesson) => {
