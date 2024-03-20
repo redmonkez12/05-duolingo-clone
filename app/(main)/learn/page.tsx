@@ -4,22 +4,25 @@ import { StickyWrapper } from "@/components/sticky-wrapper";
 import { FeedWrapper } from "@/components/FeedWrapper";
 import { Header } from "@/app/(main)/learn/header";
 import { UserProgress } from "@/components/user-progress";
-import { getCourseProgress, getLessonPercentage, getUnits, getUserProgress } from "@/db/queries";
+import { getCourseProgress, getLessonPercentage, getUnits, getUserProgress, getUserSubscription } from "@/db/queries";
 import { Unit } from "@/app/(main)/learn/unit";
 import { lessons, units as unitsSchema } from "@/db/schema";
+import { Quests } from "@/components/quests";
+import { Promo } from "@/components/promo";
 
 export default async function LearnPage() {
     const unitsData = getUnits();
     const userProgressData = getUserProgress();
     const courseProgressData = getCourseProgress();
     const lessonPercentageData = getLessonPercentage();
+    const userSubscriptionData = getUserSubscription();
 
-
-    const [userProgress, units, courseProgress, lessonPercentage] = await Promise.all([
+    const [userProgress, units, courseProgress, lessonPercentage, userSubscription] = await Promise.all([
         userProgressData,
         unitsData,
         courseProgressData,
         lessonPercentageData,
+        userSubscriptionData,
     ]);
 
     if (!userProgress || !userProgress.activeCourse) {
@@ -30,6 +33,8 @@ export default async function LearnPage() {
         redirect("/courses");
     }
 
+    const isPro = !!userSubscription?.isActive;
+
     return (
         <div className="flex flex-row-reverse gap-[48px] px-6">
             <StickyWrapper>
@@ -37,8 +42,12 @@ export default async function LearnPage() {
                     activeCourse={userProgress.activeCourse}
                     hearts={userProgress.hearts}
                     points={userProgress.points}
-                    hasActiveSubscription={false}
+                    hasActiveSubscription={!!userSubscription?.isActive}
                 />
+                {!isPro && (
+                    <Promo />
+                )}
+                <Quests points={userProgress.points}/>
             </StickyWrapper>
             <FeedWrapper>
                 <Header title={userProgress.activeCourse.title}/>

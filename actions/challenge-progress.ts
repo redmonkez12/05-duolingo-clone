@@ -5,12 +5,12 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import db from "@/db/drizzle";
-import { getUserProgress } from "@/db/queries";
-import { challengeProgress, challenges, userProgress } from "@/db/schema";
-import { POINTS_TO_REFILL } from "@/constants";
+import { getUserProgress, getUserSubscription } from "@/db/queries";
+import { challengeProgress, challenges, userProgress, userSubscription } from "@/db/schema";
 
 export const upsertChallengeProgress = async (challengeId: number) => {
     const { userId } = await auth();
+    const userSubscription = await getUserSubscription();
 
     if (!userId) {
         throw new Error("Unauthorized");
@@ -43,7 +43,8 @@ export const upsertChallengeProgress = async (challengeId: number) => {
 
     if (
         currentUserProgress.hearts === 0 &&
-        !isPractice
+        !isPractice &&
+        !userSubscription?.isActive
     ) {
         return { error: "hearts" };
     }
